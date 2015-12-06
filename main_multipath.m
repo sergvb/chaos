@@ -21,6 +21,7 @@ src(:, 2) = sig;
 figure(1);
 subplot(4, 1, 1);
 plot(sig);
+title('mix');
 grid on;
 
 % ---------------------------
@@ -32,6 +33,7 @@ s = sig - y2;
 src(:, 2) = s;
 subplot(4, 1, 2);
 plot(s);
+title('mix - ray 1');
 grid on;
 
 Y3 = runge_solver(@lorenz, [0 50], 5e-3, [10 0 1], src, [0 1 0]);
@@ -41,6 +43,7 @@ s = s - y3;
 src(:, 2) = s;
 subplot(4, 1, 3);
 plot(s);
+title('mix - ray 2');
 grid on;
 
 Y4 = runge_solver(@lorenz, [0 50], 5e-3, [10 0 1], src, [0 1 0]);
@@ -50,23 +53,28 @@ s = s - y4;
 
 subplot(4, 1, 4);
 plot(s);
+title('mix - ray 3');
 grid on;
 
 figure(2);
 subplot(4, 1, 1);
 plot(r1);
+title('ray 1');
 grid on;
 
 subplot(4, 1, 2);
 plot(r2);
+title('ray 2');
 grid on;
 
 subplot(4, 1, 3);
 plot(r3);
+title('ray 3');
 grid on;
 
 subplot(4, 1, 4);
 plot(sig);
+title('mix');
 grid on;
 
 % plot(r1, 'g--');
