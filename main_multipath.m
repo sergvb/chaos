@@ -1,10 +1,11 @@
 clc, clear all;
 
-tx_Y = runge_solver(@lorenz, [0 50], 5e-3, [-1 -1 -1]);
+step = 5e-3;
+tx_Y = runge_solver(@lorenz, [0 50], step, [-1 0 -1]);
 signal = tx_Y(:, 2);
 
-tau = [0, 120, 130, 150, 231];
-mag = [1, 0.1, 0.2, 0.01, 0.5];
+tau = [0, 100];
+mag = [1, 0.5];
 ray_number = min([ numel(tau), numel(mag) ]);
 
 m_signal = zeros(size(signal));
@@ -17,17 +18,16 @@ end
 
 % ---------------------------
 
-rx_sync_iteration_number = 20;
-src = zeros(size(tx_Y));
+rx_sync_iteration_number = 5;
 r_signal = m_signal;
 
-iter_result = zeros(numel(r_signal), rx_sync_iteration_number);
+iter_data = struct();
 
 for i = 1:rx_sync_iteration_number
-    src(1:numel(r_signal), 2) = r_signal;
-    rx_Y = runge_solver(@lorenz, [0 50], 5e-3, [1 0 1], src, [0 1 0]);
+    rx_Y = runge_solver(@lorenz, [0 50], step, [1 0 1], @(i, Yn) mix_value(i, Yn, r_signal));
     r_signal = r_signal - rx_Y(1:numel(r_signal), 2);
-    iter_result(:, i) = r_signal;
+    iter_data(i).signal = r_signal;
+    iter_data(i).phase = rx_Y;
 end
 
 % ---------------------------
@@ -41,9 +41,13 @@ i_map = reshape(reshape(plot_index, [column_number, row_number]).', [1, rx_sync_
 figure(1);
 for i = plot_index
     subplot(row_number, column_number, i_map(i));
-    plot(iter_result(:, i));
+    plot(iter_data(i).signal);
     xlim([0, numel(r_signal)]);
     ylim([-2, 2]);
     title(['Iteration ' num2str(i)]);
     grid on;
 end
+
+figure(2);
+phase = iter_data(5).phase;
+plot3(phase(:, 1), phase(:, 2), phase(:, 3));
