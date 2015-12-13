@@ -27,8 +27,6 @@ for i = 1:rx_sync_iteration_number
     src(1:numel(r_signal), 2) = r_signal;
     rx_Y = runge_solver(@lorenz, [0 50], 5e-3, [1 0 1], src, [0 1 0]);
     r_signal = r_signal - rx_Y(1:numel(r_signal), 2);
-    r_signal(r_signal > 5) = 5;
-    r_signal(r_signal < -5) = -5;
     iter_result(:, i) = r_signal;
 end
 
