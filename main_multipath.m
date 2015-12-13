@@ -6,11 +6,10 @@ signal = tx_Y(:, 2);
 
 tau = [0, 100];
 mag = [1, 0.5];
-ray_number = min([ numel(tau), numel(mag) ]);
 
 m_signal = zeros(size(signal));
 
-for i = 1:ray_number
+for i = 1:min([ numel(tau), numel(mag) ])
     t = tau(i) + 1;
     m = mag(i);
     m_signal(t:end) = m_signal(t:end) + m*signal(1:end - t + 1);
@@ -48,6 +47,6 @@ for i = plot_index
     grid on;
 end
 
-figure(2);
-phase = iter_data(5).phase;
-plot3(phase(:, 1), phase(:, 2), phase(:, 3));
+% figure(2);
+% phase = iter_data(5).phase;
+% plot3(phase(:, 1), phase(:, 2), phase(:, 3));
