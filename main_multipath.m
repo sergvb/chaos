@@ -1,88 +1,51 @@
 clc, clear all;
 
-tau1 = 2123;
-tau2 = 952;
+tx_Y = runge_solver(@lorenz, [0 50], 5e-3, [-1 -1 -1]);
+signal = tx_Y(:, 2);
 
-Y1 = runge_solver(@lorenz, [0 50], 5e-3, [-15 -3 -30]);
-ray1 = Y1(:, 2);
+tau = [0, 120, 130, 150, 231];
+mag = [1, 0.1, 0.2, 0.01, 0.5];
+ray_number = min([ numel(tau), numel(mag) ]);
 
-ray2 = zeros(size(ray1));
-ray2(tau1:end) = ray2(tau1:end) + ray1(1:end - tau1 + 1);
+m_signal = zeros(size(signal));
 
-ray3 = zeros(size(ray1));
-ray3(tau2:end) = ray3(tau2:end) + ray1(1:end - tau2 + 1);
-
-m_signal = ray1 + 0.4*ray2 + 0.1*ray3;
+for i = 1:ray_number
+    t = tau(i) + 1;
+    m = mag(i);
+    m_signal(t:end) = m_signal(t:end) + m*signal(1:end - t + 1);
+end
 
 % ---------------------------
 
-src = zeros(size(Y1));
-
+rx_sync_iteration_number = 20;
+src = zeros(size(tx_Y));
 r_signal = m_signal;
 
-src(:, 2) = r_signal;
-Y2 = runge_solver(@lorenz, [0 50], 5e-3, [10 0 1], src, [0 1 0]);
-y2 = Y2(:, 2);
+iter_result = zeros(numel(r_signal), rx_sync_iteration_number);
 
-r_signal = r_signal - y2;
-rs_minus_r1 = r_signal;
-
-src(:, 2) = r_signal;
-Y3 = runge_solver(@lorenz, [0 50], 5e-3, [10 0 1], src, [0 1 0]);
-y3 = Y3(:, 2);
-
-r_signal = r_signal - y3;
-rs_minus_r2 = r_signal;
-
-src(:, 2) = r_signal;
-Y4 = runge_solver(@lorenz, [0 50], 5e-3, [10 0 1], src, [0 1 0]);
-y4 = Y4(:, 2);
-
-r_signal = r_signal - y4;
-rs_minus_r3 = r_signal;
-
-src(:, 2) = r_signal;
-Y5 = runge_solver(@lorenz, [0 50], 5e-3, [10 0 1], src, [0 1 0]);
-y5 = Y5(:, 2);
-
-r_signal = r_signal - y5;
-rs_minus_a = r_signal;
+for i = 1:rx_sync_iteration_number
+    src(1:numel(r_signal), 2) = r_signal;
+    rx_Y = runge_solver(@lorenz, [0 50], 5e-3, [1 0 1], src, [0 1 0]);
+    r_signal = r_signal - rx_Y(1:numel(r_signal), 2);
+    r_signal(r_signal > 5) = 5;
+    r_signal(r_signal < -5) = -5;
+    iter_result(:, i) = r_signal;
+end
 
 % ---------------------------
 
-p_number = 5;
+max_row_number = 5;
+plot_index = 1:rx_sync_iteration_number;
+column_number = double(idivide(int32(rx_sync_iteration_number - 1), int32(max_row_number), 'fix') + 1);
+row_number = double(idivide(int32(rx_sync_iteration_number - 1), int32(column_number), 'fix') + 1);
+i_map = reshape(reshape(plot_index, [column_number, row_number]).', [1, rx_sync_iteration_number]);
+
 figure(1);
-subplot(p_number, 1, 1);
-plot(m_signal);
-title('mix');
-grid on;
-
-subplot(p_number, 1, 2);
-plot(rs_minus_r1);
-title('mix - ray 1');
-grid on;
-
-subplot(p_number, 1, 3);
-plot(rs_minus_r2);
-title('mix - ray 2');
-grid on;
-
-subplot(p_number, 1, 4);
-plot(rs_minus_r3);
-title('mix - ray 3');
-grid on;
-
-subplot(p_number, 1, 5);
-plot(rs_minus_a);
-title('mix - aditional');
-grid on;
-
-% plot(r1, 'g--');
-% hold on; plot(r2, 'r-.');
-% hold on; plot(y2, 'b');
-% grid on;
-
-% plot3(Y(:,1), Y(:,2), Y(:,3));
-% hold on; plot3(Y2(:,1), Y2(:,2), Y2(:,3), 'r--');
-% title('3D');
-% grid on;
+for i = plot_index
+    subplot(row_number, column_number, i_map(i));
+    plot(iter_result(:, i));
+    xlim([0, numel(r_signal)]);
+    ylim([-2, 2]);
+    title(['Iteration ' num2str(i)]);
+    grid on;
+end
