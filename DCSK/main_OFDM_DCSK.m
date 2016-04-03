@@ -1,17 +1,10 @@
 clc, clear all;
 
+cfg = globalConfiguration();
+
 % TRANSMITTER
 % Parallel data
 p_data = [1, -1, -1, 1, 1, 1, -1, 1].';
-
-% Insert pilot
-p_data = vertcat(1, p_data(1:4), 1, p_data(5:end), 1);
-
-% Spreding sequence
-ss = CPF(20, 0.03).';
-
-symbol = ifft(diag(p_data)*repmat(ss, 11, 1));
-r = reshape(symbol, 1, []);
 
 
 
