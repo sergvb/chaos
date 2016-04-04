@@ -3,66 +3,79 @@ classdef Transmitter < handle
     properties(Access = private)
         globalConfig;
         userConfig;
+        mapper;
     end
     
     methods
         
-        function this = Transmitter(globalConfig, userConfig)
+        function this = Transmitter(globalConfig, userConfig, mapper)
             this.globalConfig = globalConfig;
             this.userConfig = userConfig;
+            this.mapper = mapper;
         end
         
-        function signal = Transmit(data)
-            gCfg = this.globalConfig;
-            
-            data = data(:);
-            blocksNumber = ceil(numel(data)/gCfg.Ns);
-            alignedData = zeros(blocksNumber*gCfg.Ns, 1);
-            alignedData(1:numel(data)) = data;
-            dataBlocks = reshape(alignedData, gCfg.Ns, []);
-            
-            signal = reshape(symbols, 1, []);
+        function signal = Transmit(this, data)
+            dataBlocks = this.SerialToParallel(data(:));
+            symbol = this.MakeSymbol(dataBlocks);
+            signal = reshape(symbol, 1, []);
         end
         
     end
     
     methods(Access = private)
         
-        function symbol = MakeSymbol(this, dataBlock)
+        function result = MakeSymbol(this, dataBlock)
             % Make OFDM-DCSK symbol
+            cfg = this.globalConfig;
+            user = this.userConfig;
             
-            % Spreding sequence
-            ss = this.userConfig.chaoticGenerator.Generate(this.globalConfig.beta);
-            pilotPattern = this.GetPilotPattern();
+            result = this.InsertPilots(dataBlock);
+            result = this.SpredInTime(result);
+            chaoticSequence = user.chaoticGenerator.Generate(cfg.beta*size(dataBlock, 2));
+            chaoticSequence = chaoticSequence.';
+            chaoticSequence = repmat(chaoticSequence, cfg.N, 1);
+            result = result.*chaoticSequence;
+            result = ifft(result);
+        end
+        
+        function result = SerialToParallel(this, data)
+            cfg = this.globalConfig;
             
-            % Insert pilots
-            data = vertcat(1, data(1:4), 1, data(5:end), 1);
-            symbol = ifft(diag(data)*repmat(ss, 11, 1));
-            
+            bitsNumber = numel(data);
+            blocksNumber = ceil(bitsNumber/cfg.Ns);
+            alignedData = zeros(blocksNumber*cfg.Ns, 1);
+            alignedData(1:bitsNumber) = data;
+            result = reshape(alignedData, cfg.Ns, []);
         end
         
         function result = InsertPilots(this, dataBlock)
-            gCfg = this.globalConfig;
-            dataBlocksNumber = size(dataBlock, 2);
-            usersNumber = gCfg.P;
-            shSubCarriersNumber = gCfg.Ns;
-            shSubBandsNumber = gCfg.Np - 1;
-            shSubBandSize = shSubCarriersNumber/shSubBandsNumber;
-            shSubBandsSizes = zeros(shSubBandsNumber, 1);
+            cfg = this.globalConfig;
             
-            pSubBand = zeros(usersNumber, 1);
-            pSubBand(this.userConfig.number) = 1;
-            pSubBand = repmat(pSubBand, 1, dataBlocksNumber);
-            
-            shSubBandsSizes(:) = floor(shSubBandSize);
-            shSubBandsSizes(end) = ceil(shSubBandSize);
+            pSubBand = zeros(cfg.P, 1);
+            % Inserting the marker of a reference signal for the
+            % particular user.
+            pSubBand(this.userConfig.index) = 1;
+            pSubBand = repmat(pSubBand, cfg.Np, size(dataBlock, 2));
             
             result = vertcat(pSubBand, dataBlock);
+            
+            % Distributing the private subcarriers according to the
+            % comb-type pattern.
+            result = this.mapper.matrix*result;
         end
-                
-        function alignedDataBlock = AlignDataBlock(this, dataBlock)
-            alignedDataBlock = zeros(this.globalConfig.Ns, 1);
-            alignedDataBlock(1:numel(dataBlock)) = dataBlock;
+        
+        function result = SpredInTime(this, dataBlocks)
+            cfg = this.globalConfig;
+            dataBlocksNumber = size(dataBlocks, 2);
+            
+            matrix = zeros(dataBlocksNumber, dataBlocksNumber*cfg.beta);
+            matrix(:, 1:cfg.beta) = 1;
+            
+            for i = 2:dataBlocksNumber
+                matrix(i:end, :) = circshift(matrix(i:end, :), cfg.beta, 2);
+            end
+            
+            result = (matrix.'*dataBlocks.').';
         end
         
     end

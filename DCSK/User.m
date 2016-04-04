@@ -1,14 +1,14 @@
 classdef(Sealed) User < handle
     
     properties(SetAccess = private)
-        number;
+        index;
         chaoticGenerator;
     end
     
     methods
         
-        function this = User(number, chaoticGenerator)
-            this.number = number;
+        function this = User(index, chaoticGenerator)
+            this.index = index;
             this.chaoticGenerator = chaoticGenerator;
         end
         
