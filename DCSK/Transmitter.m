@@ -30,7 +30,8 @@ classdef Transmitter < handle
             user = this.userConfig;
             
             result = this.InsertPilots(dataBlock);
-            result = this.SpredInTime(result);
+            % Spreading in time.
+            result = kron(result, ones(1, cfg.beta));
             chaoticSequence = user.chaoticGenerator.Generate(cfg.beta*size(dataBlock, 2));
             chaoticSequence = chaoticSequence.';
             chaoticSequence = repmat(chaoticSequence, cfg.N, 1);
@@ -62,20 +63,6 @@ classdef Transmitter < handle
             % Distributing the private subcarriers according to the
             % comb-type pattern.
             result = this.mapper.matrix*result;
-        end
-        
-        function result = SpredInTime(this, dataBlocks)
-            cfg = this.globalConfig;
-            dataBlocksNumber = size(dataBlocks, 2);
-            
-            matrix = zeros(dataBlocksNumber, dataBlocksNumber*cfg.beta);
-            matrix(:, 1:cfg.beta) = 1;
-            
-            for i = 2:dataBlocksNumber
-                matrix(i:end, :) = circshift(matrix(i:end, :), cfg.beta, 2);
-            end
-            
-            result = (matrix.'*dataBlocks.').';
         end
         
     end
