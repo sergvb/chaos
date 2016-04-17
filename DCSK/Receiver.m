@@ -16,9 +16,8 @@ classdef Receiver < handle
         
         function [R, Y] = Receive(this, signal)
             cfg = this.globalConfig;
-            
             samplesBlocks = this.SerialToParallel(signal(:));
-            result = fft(samplesBlocks);
+            result = fftshift(fft(samplesBlocks), 1);
             result = this.mapper.matrix.'*result;
             R = this.refPermuteMatrix*result(1:cfg.P*cfg.Np, :);
             Y = result((cfg.P*cfg.Np + 1):end, :);
@@ -30,17 +29,12 @@ classdef Receiver < handle
         
         function result = SerialToParallel(this, samples)
             cfg = this.globalConfig;
-            
-            samplesNumber = numel(samples);
-            blocksNumber = ceil(samplesNumber/cfg.N);
-            alignedData = zeros(blocksNumber*cfg.N, 1);
-            alignedData(1:samplesNumber) = samples;
-            result = reshape(alignedData, cfg.N, []);
+            result = Util.align(samples, cfg.N);
+            result = reshape(result, cfg.N, []);
         end
         
         function result = CalculateRefPermuteMatrix(this)
             cfg = this.globalConfig;
-            
             mat = zeros(cfg.P, cfg.Np);
             mat(1, 1) = 1;
             mat = repmat(mat, cfg.Np, cfg.P);
